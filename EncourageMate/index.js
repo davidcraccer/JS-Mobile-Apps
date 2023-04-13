@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js"
-import { getDatabase, ref, push, onValue, remove, set } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js"
+import { getDatabase, ref, push, onValue, remove, set, get } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js"
 
 //database setting
 const appSettings = {
@@ -10,15 +10,14 @@ const database = getDatabase(app)
 const messagesListInDB = ref(database, "messages")
 
 //dom manipulation
-const get = id => document.querySelector(id)
-const endorsementMsg = get('#cta-msg')
-const addresserEl = get('#addresser')
-const receiverEl = get('#receiver')
-const publishBtn = get('#cta-btn')
-const endorsementsContainer = get('.endorsements-container')
-const endorsementsTitle = get('.endorsements h2')
+const getEl = id => document.querySelector(id)
+const endorsementMsg = getEl('#cta-msg')
+const addresserEl = getEl('#addresser')
+const receiverEl = getEl('#receiver')
+const publishBtn = getEl('#cta-btn')
+const endorsementsContainer = getEl('.endorsements-container')
+const endorsementsTitle = getEl('.endorsements h2')
 
-const likeBtn = get('#like-btn')
 
 
 publishBtn.addEventListener('click', (e) => {
@@ -33,7 +32,8 @@ publishBtn.addEventListener('click', (e) => {
         addresser,
         receiver,
         likes: 0,
-        isLiked: false
+        isLiked: false,
+        imgSrc: '/assets/icon-heart.png',
     }
     push(messagesListInDB, msgObj)
     clearInputfieldsEl()
@@ -67,7 +67,7 @@ function appendItemToMessagesList(item){
         <div class="endorsement-bottom flex">
             <p>From ${itemValue.addresser}</p>
             <div class="flex">
-                <img src="/assets/icon-heart.png" alt="Heart Icon" class="like-btn">
+                <img src=${itemValue.imgSrc} alt="Heart Icon" class="like-btn">
                 <p>${itemValue.likes}</p>
             </div>
         </div>
@@ -76,9 +76,9 @@ function appendItemToMessagesList(item){
     
     const msgElement = document.createElement('div')
     msgElement.innerHTML = newMsg
-
     msgElement.addEventListener("dblclick", () => handleDeleteMsg(itemId))
-    //only works for one button, the icon doesnt change, the number goes up infinite times
+
+    //the icon doesnt change, the number goes up infinite times
     const likeButton = msgElement.querySelector('.like-btn')
     likeButton.addEventListener('click', () => {
         handleLikeBtn(itemId, itemValue.likes)
@@ -89,13 +89,28 @@ function appendItemToMessagesList(item){
 
 
 function handleLikeBtn(id, likes){
-    let exactLocationOfItemInDB = ref(database, `messages/${id}/likes`)
-    let updatedLikes = likes + 1;
-    set(exactLocationOfItemInDB, updatedLikes);
+    const isLikedRef = ref(database, `messages/${id}/isLiked`)
+    const exactLocationOfLikesInDB = ref(database, `messages/${id}/likes`)
+    const imgSrcRef = ref(database, `messages/${id}/imgSrc`)
+    get(isLikedRef).then((snapshot) => {
+        const isLiked = snapshot.val()
+        if (isLiked){
+            const updatedLikes = likes - 1
+            set(isLikedRef, false)
+            set(imgSrcRef, '/assets/icon-heart.png')
+            set(exactLocationOfLikesInDB, updatedLikes)
+        }
+        else if (!isLiked){
+            const updatedLikes = likes + 1
+            set(isLikedRef, true)            
+            set(imgSrcRef, '/assets/filled-heart.png')
+            set(exactLocationOfLikesInDB, updatedLikes)
+        }
+    })
 }
 
 function handleDeleteMsg(id){
-    let exactLocationOfItemInDB = ref(database, `messages/${id}`)
+    const exactLocationOfItemInDB = ref(database, `messages/${id}`)
     remove(exactLocationOfItemInDB)
 }
 
